@@ -2,6 +2,7 @@ uniform sampler2D tDiffuse;
 uniform vec2 uResolution;
 uniform vec3 uBlackHolePositionScreen; // x, y, z (z is visibility/depth)
 uniform float uMass; // Strength of lensing
+uniform float uBlackHoleRadius;
 
 varying vec2 vUv;
 
@@ -37,10 +38,26 @@ void main()
     // Fetch color
     vec4 color = texture2D(tDiffuse, newUv);
     
-    // Black out the center (Event Horizon) if not covered by the 3D sphere
-    // Actually, the 3D sphere is already black.
-    // But the lensing might pull background *over* the black sphere.
-    // So we rely on the 3D scene for the black hole itself, and this pass just distorts the background.
+    // Photon Ring
+    // Calculate distance from center in UV space
+    // We want a ring at uBlackHoleRadius * 1.5 (approx photon sphere radius)
+    // But let's just put it tight around the black hole.
+    
+    float radius = uBlackHoleRadius; // Passed from JS
+    float ringDist = abs(dist - radius * 1.1); // Slightly larger than EH
+    float ringIntensity = 0.002 / (ringDist + 0.0001);
+    ringIntensity = smoothstep(0.0, 100.0, ringIntensity);
+    ringIntensity *= 0.5; // Adjust brightness
+    
+    // Add golden color for the ring
+    vec3 ringColor = vec3(1.0, 0.8, 0.5) * ringIntensity;
+    
+    // Mask out if inside the black hole (simple check)
+    if(dist < radius) {
+        ringColor = vec3(0.0);
+    }
+    
+    color.rgb += ringColor;
     
     gl_FragColor = color;
 }

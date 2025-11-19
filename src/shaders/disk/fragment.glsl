@@ -40,19 +40,36 @@ void main()
     float radius = length(toCenter) * 2.0;
     float angle = atan(toCenter.y, toCenter.x);
 
-    // Swirl effect
-    float swirl = snoise(vec2(radius * 10.0 - uTime * 2.0, angle * 2.0 + uTime * 0.5));
+    // Enhanced noise (fbm-like layering)
+    float noise1 = snoise(vec2(radius * 10.0 - uTime * 2.0, angle * 2.0 + uTime * 0.5));
+    float noise2 = snoise(vec2(radius * 20.0 - uTime * 3.0, angle * 4.0 + uTime * 0.8));
+    float swirl = noise1 * 0.7 + noise2 * 0.3;
     
+    // Doppler Beaming
+    // Assuming the disk rotates counter-clockwise, the left side (negative x) moves towards the viewer (blueshift/brighter)
+    // and the right side (positive x) moves away (redshift/dimmer).
+    // We use the x-coordinate of the UVs (centered) to determine this.
+    // toCenter.x ranges from -0.5 to 0.5.
+    
+    float dopplerFactor = 1.0 - toCenter.x * 3.0; // 3.0 amplifies the effect
+    dopplerFactor = clamp(dopplerFactor, 0.2, 2.5); // Clamp to avoid total darkness or excessive brightness
+
     // Color mixing
-    vec3 colorInside = vec3(1.0, 0.5, 0.2);
+    vec3 colorInside = vec3(1.0, 0.6, 0.3); // Slightly hotter inside
     vec3 colorOutside = vec3(0.8, 0.1, 0.0);
-    vec3 color = mix(colorInside, colorOutside, radius);
+    vec3 baseColor = mix(colorInside, colorOutside, radius);
     
-    // Add noise
-    color += swirl * 0.2;
+    // Apply Doppler to color
+    // Blueshift: shift towards white/blue (add brightness)
+    // Redshift: shift towards red/dark (multiply by factor)
+    
+    vec3 finalColor = baseColor * dopplerFactor;
+    
+    // Add noise details
+    finalColor += swirl * 0.3 * dopplerFactor;
     
     // Alpha gradient (fade out at edges)
     float alpha = 1.0 - smoothstep(0.4, 0.5, abs(radius - 0.5));
     
-    gl_FragColor = vec4(color, alpha);
+    gl_FragColor = vec4(finalColor, alpha);
 }

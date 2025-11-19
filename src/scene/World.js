@@ -20,5 +20,8 @@ export default class World {
     update(time) {
         if(this.blackHole)
             this.blackHole.update(time)
+            
+        if(this.starfield)
+            this.starfield.update(time)
     }
 }

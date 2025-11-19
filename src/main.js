@@ -72,6 +72,7 @@ const lensingPass = new ShaderPass({
         tDiffuse: { value: null },
         uResolution: { value: new THREE.Vector2(sizes.width, sizes.height) },
         uBlackHolePositionScreen: { value: new THREE.Vector3(0.5, 0.5, 0) },
+        uBlackHoleRadius: { value: 0.1 },
         uMass: { value: 0 }
     },
     vertexShader: lensingVertexShader,
@@ -130,8 +131,8 @@ const tick = () =>
 
     // Update Lensing Uniforms
     // Project black hole position to screen space
-    if(world.blackHole && world.blackHole.mesh) {
-        const blackHolePos = world.blackHole.mesh.position.clone()
+    if(world.blackHole && world.blackHole.eventHorizon) {
+        const blackHolePos = world.blackHole.eventHorizon.position.clone()
         blackHolePos.project(camera)
         
         // Convert from [-1, 1] to [0, 1]
@@ -139,7 +140,19 @@ const tick = () =>
         const y = blackHolePos.y * 0.5 + 0.5
         
         lensingPass.uniforms.uBlackHolePositionScreen.value.set(x, y, blackHolePos.z)
-        lensingPass.uniforms.uMass.value = 1.0 // Set mass
+        
+        // Calculate screen radius (approximate)
+        // Sphere radius is 1.0
+        const distance = camera.position.distanceTo(world.blackHole.eventHorizon.position)
+        const fov = camera.fov * Math.PI / 180
+        const height = 2 * Math.tan(fov / 2) * distance
+        const screenRadius = (1.0 / height) * (sizes.height / sizes.width) * 2.0 // Rough approximation for aspect ratio
+        // Actually, just 1.0 / distance is proportional.
+        // Let's use a better approximation: projected radius.
+        // radius / distance * (1 / tan(fov/2))
+        const projectedRadius = (1.0 / distance) / Math.tan(fov / 2)
+        
+        lensingPass.uniforms.uBlackHoleRadius.value = projectedRadius * 0.5; // Scale to match UV space (0-1)
     }
     
     lensingPass.uniforms.uResolution.value.set(sizes.width, sizes.height)
